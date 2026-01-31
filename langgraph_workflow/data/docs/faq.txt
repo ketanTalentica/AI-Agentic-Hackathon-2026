@@ -1,0 +1,150 @@
+Q1: How can I monitor and alert on feature flags issues?
+A1: If you cannot resolve, escalate to on-call with the following: summary, steps tried, relevant logs, and correlation IDs. Note: correlate with deploy timestamps.
+
+Q2: How to deploy a patch for authentication without downtime?
+A2: This usually happens when the authentication component hits resource limits or misconfiguration. Check CPU/memory, network, and dependent services. Note: correlate with deploy timestamps.
+
+Q3: How do I troubleshoot secret management when I see error code 434?
+A3: Steps: Reproduce the issue in staging; Collect logs and traces; Isolate the root cause; Apply a patch and monitor Note: correlate with deploy timestamps.
+
+Q4: How to roll back a bad migration that affected rate limiting?
+A4: This usually happens when the rate limiting component hits resource limits or misconfiguration. Check CPU/memory, network, and dependent services. Note: correlate with deploy timestamps.
+
+Q5: How do I troubleshoot secret management when I see error code 177?
+A5: If you cannot resolve, escalate to on-call with the following: summary, steps tried, relevant logs, and correlation IDs. Tip: check feature flags.
+
+Q6: How to deploy a patch for secret management without downtime?
+A6: Contact on-call and include correlation IDs, sample logs, and exact timestamps. Note: correlate with deploy timestamps.
+
+Q7: How to deploy a patch for secret management without downtime?
+A7: Look for spikes in request rate and check the autoscaler and quota limits. Tip: check feature flags.
+
+Q8: How to deploy a patch for authentication without downtime?
+A8: Steps: Reproduce the issue in staging; Collect logs and traces; Isolate the root cause; Apply a patch and monitor Pro tip: enable debug logs for 10 minutes.
+
+Q9: How do I troubleshoot webhooks when I see error code 220?
+A9: This usually happens when the webhooks component hits resource limits or misconfiguration. Check CPU/memory, network, and dependent services. Pro tip: enable debug logs for 10 minutes.
+
+Q10: How to deploy a patch for logging without downtime?
+A10: If it's a database schema issue, revert the migration and restore from backup if necessary. Note: correlate with deploy timestamps.
+
+Q11: How to deploy a patch for billing without downtime?
+A11: Run: `kubectl get pods -l app=billing` then `kubectl logs <pod>` to inspect errors. Tip: check feature flags.
+
+Q12: What steps should I take when rate limiting shows increased latency?
+A12: Steps: Reproduce the issue in staging; Collect logs and traces; Isolate the root cause; Apply a patch and monitor Note: correlate with deploy timestamps.
+
+Q13: How to roll back a bad migration that affected webhooks?
+A13: This usually happens when the webhooks component hits resource limits or misconfiguration. Check CPU/memory, network, and dependent services. Note: correlate with deploy timestamps.
+
+Q14: What steps should I take when secret management shows increased latency?
+A14: This usually happens when the secret management component hits resource limits or misconfiguration. Check CPU/memory, network, and dependent services. Note: correlate with deploy timestamps.
+
+Q15: What steps should I take when CI/CD shows increased latency?
+A15: If you cannot resolve, escalate to on-call with the following: summary, steps tried, relevant logs, and correlation IDs. Note: correlate with deploy timestamps.
+
+Q16: How do I troubleshoot cache when I see error code 210?
+A16: Run: `kubectl get pods -l app=cache` then `kubectl logs <pod>` to inspect errors. Tip: check feature flags.
+
+Q17: How can I monitor and alert on billing issues?
+A17: This usually happens when the billing component hits resource limits or misconfiguration. Check CPU/memory, network, and dependent services. Pro tip: enable debug logs for 10 minutes.
+
+Q18: Why are my deployment requests timing out?
+A18: Increase logging level temporarily to gather traces and reproduce the issue in staging. Note: correlate with deploy timestamps.
+
+Q19: What are common causes of API gateway failures?
+A19: Steps: Reproduce the issue in staging; Collect logs and traces; Isolate the root cause; Apply a patch and monitor Tip: check feature flags.
+
+Q20: How to roll back a bad migration that affected webhooks?
+A20: If you cannot resolve, escalate to on-call with the following: summary, steps tried, relevant logs, and correlation IDs. Pro tip: enable debug logs for 10 minutes.
+
+Q21: How can I monitor and alert on authentication issues?
+A21: If you cannot resolve, escalate to on-call with the following: summary, steps tried, relevant logs, and correlation IDs. Note: correlate with deploy timestamps.
+
+Q22: How can I monitor and alert on cache issues?
+A22: This usually happens when the cache component hits resource limits or misconfiguration. Check CPU/memory, network, and dependent services. Pro tip: enable debug logs for 10 minutes.
+
+Q23: What steps should I take when authentication shows increased latency?
+A23: Steps: Reproduce the issue in staging; Collect logs and traces; Isolate the root cause; Apply a patch and monitor Note: correlate with deploy timestamps.
+
+Q24: How to roll back a bad migration that affected billing?
+A24: This usually happens when the billing component hits resource limits or misconfiguration. Check CPU/memory, network, and dependent services. Tip: check feature flags.
+
+Q25: What are common causes of monitoring failures?
+A25: Steps: Reproduce the issue in staging; Collect logs and traces; Isolate the root cause; Apply a patch and monitor Pro tip: enable debug logs for 10 minutes.
+
+Q26: How to perform a safe restart of the payment service component?
+A26: If you cannot resolve, escalate to on-call with the following: summary, steps tried, relevant logs, and correlation IDs. Tip: check feature flags.
+
+Q27: How to roll back a bad migration that affected rate limiting?
+A27: If you cannot resolve, escalate to on-call with the following: summary, steps tried, relevant logs, and correlation IDs. Pro tip: enable debug logs for 10 minutes.
+
+Q28: How to roll back a bad migration that affected email delivery?
+A28: Check the logs (`kubectl logs`), identify the exception, and correlate with recent deploys. Tip: check feature flags.
+
+Q29: How do I troubleshoot email delivery when I see error code 321?
+A29: Restart the service gracefully: `kubectl rollout restart deployment/<name> -n prod`. Tip: check feature flags.
+
+Q30: How do I troubleshoot authentication when I see error code 428?
+A30: Verify configuration and credentials. Ensure network access and DB connections are healthy. Tip: check feature flags.
+
+Q31: How to roll back a bad migration that affected payment service?
+A31: This usually happens when the payment service component hits resource limits or misconfiguration. Check CPU/memory, network, and dependent services. Note: correlate with deploy timestamps.
+
+Q32: What are common causes of database failures?
+A32: This usually happens when the database component hits resource limits or misconfiguration. Check CPU/memory, network, and dependent services. Tip: check feature flags.
+
+Q33: How can I monitor and alert on billing issues?
+A33: This usually happens when the billing component hits resource limits or misconfiguration. Check CPU/memory, network, and dependent services. Pro tip: enable debug logs for 10 minutes.
+
+Q34: How to deploy a patch for authentication without downtime?
+A34: Run: `kubectl get pods -l app=authentication` then `kubectl logs <pod>` to inspect errors. Tip: check feature flags.
+
+Q35: How to deploy a patch for payment service without downtime?
+A35: This usually happens when the payment service component hits resource limits or misconfiguration. Check CPU/memory, network, and dependent services. Note: correlate with deploy timestamps.
+
+Q36: How to perform a safe restart of the authentication component?
+A36: Steps: Reproduce the issue in staging; Collect logs and traces; Isolate the root cause; Apply a patch and monitor Note: correlate with deploy timestamps.
+
+Q37: Why are my API gateway requests timing out?
+A37: Look for spikes in request rate and check the autoscaler and quota limits. Note: correlate with deploy timestamps.
+
+Q38: What are common causes of cache failures?
+A38: If you cannot resolve, escalate to on-call with the following: summary, steps tried, relevant logs, and correlation IDs. Tip: check feature flags.
+
+Q39: How can I monitor and alert on database issues?
+A39: Look for spikes in request rate and check the autoscaler and quota limits. Tip: check feature flags.
+
+Q40: Why are my webhooks requests timing out?
+A40: This usually happens when the webhooks component hits resource limits or misconfiguration. Check CPU/memory, network, and dependent services. Tip: check feature flags.
+
+Q41: How do I troubleshoot authentication when I see error code 298?
+A41: If you cannot resolve, escalate to on-call with the following: summary, steps tried, relevant logs, and correlation IDs. Note: correlate with deploy timestamps.
+
+Q42: How to perform a safe restart of the email delivery component?
+A42: This usually happens when the email delivery component hits resource limits or misconfiguration. Check CPU/memory, network, and dependent services. Pro tip: enable debug logs for 10 minutes.
+
+Q43: How to deploy a patch for feature flags without downtime?
+A43: This usually happens when the feature flags component hits resource limits or misconfiguration. Check CPU/memory, network, and dependent services. Pro tip: enable debug logs for 10 minutes.
+
+Q44: What steps should I take when database shows increased latency?
+A44: This usually happens when the database component hits resource limits or misconfiguration. Check CPU/memory, network, and dependent services. Pro tip: enable debug logs for 10 minutes.
+
+Q45: How to deploy a patch for database without downtime?
+A45: Increase logging level temporarily to gather traces and reproduce the issue in staging. Note: correlate with deploy timestamps.
+
+Q46: How to roll back a bad migration that affected cache?
+A46: If it's a database schema issue, revert the migration and restore from backup if necessary. Note: correlate with deploy timestamps.
+
+Q47: Why are my schema migrations requests timing out?
+A47: If you cannot resolve, escalate to on-call with the following: summary, steps tried, relevant logs, and correlation IDs. Tip: check feature flags.
+
+Q48: How do I troubleshoot secret management when I see error code 162?
+A48: If it's a database schema issue, revert the migration and restore from backup if necessary. Pro tip: enable debug logs for 10 minutes.
+
+Q49: How do I troubleshoot authentication when I see error code 544?
+A49: This usually happens when the authentication component hits resource limits or misconfiguration. Check CPU/memory, network, and dependent services. Note: correlate with deploy timestamps.
+
+Q50: How can I monitor and alert on feature flags issues?
+A50: Steps: Reproduce the issue in staging; Collect logs and traces; Isolate the root cause; Apply a patch and monitor Tip: check feature flags.
+
