@@ -1,0 +1,44 @@
+{
+    "strategy_rules": [
+        {
+            "priority": 1,
+            "condition": {
+                "field": "urgency_level",
+                "operator": "in",
+                "value": ["high", "critical"]
+            },
+            "action": {
+                "strategy": "parallel",
+                "template": "incident_response"
+            }
+        },
+        {
+            "priority": 2,
+            "condition": {
+                "field": "sla_risk_score",
+                "operator": ">",
+                "value": 0.7
+            },
+            "action": {
+                "strategy": "parallel",
+                "template": "incident_response"
+            }
+        },
+        {
+            "priority": 3,
+            "condition": {
+                "field": "primary_intent",
+                "operator": "in",
+                "value": ["faq", "status_check", "billing_inquiry"]
+            },
+            "action": {
+                "strategy": "serial",
+                "template": "rapid_inquiry"
+            }
+        }
+    ],
+    "default_strategy": {
+        "strategy": "dynamic_dag",
+        "template": "customer_support_ticket"
+    }
+}

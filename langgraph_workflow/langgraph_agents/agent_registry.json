@@ -1,0 +1,179 @@
+{
+  "agents": {
+    "ingestion_agent": {
+      "description": "Normalizes incoming tickets/queries and queries to standardized format.",
+      "input_schema": {
+        "raw_input": {"type": "string", "required": true},
+        "source_metadata": {"type": "object", "required": false}
+      },
+      "output_schema": {
+        "normalized_payload": {"type": "object", "description": "Standardized request object"}
+      },
+      "capabilities": ["input_normalization", "request_standardization"],
+      "dependencies": [],
+      "execution_time_estimate": "1-2s",
+      "cost_tier": "low",
+      "agent_class": "IngestionAgent",
+      "model_config": {"agent_type": "standard"},
+      "required_packages": ["pydantic"]
+    },
+    "intent_agent": {
+      "description": "Detects intent, urgency, and SLA risk.",
+      "input_schema": {
+        "normalized_payload": {"type": "object", "required": true}
+      },
+      "output_schema": {
+        "intent_classification": {"type": "object", "description": "Intent, Urgency, SLA status"}
+      },
+      "capabilities": ["intent_classification", "urgency_detection", "sla_monitoring"],
+      "dependencies": ["ingestion_agent"],
+      "execution_time_estimate": "1-3s",
+      "cost_tier": "low",
+      "agent_class": "IntentAgent",
+      "model_config": {"agent_type": "classifier"},
+      "required_packages": ["scikit-learn", "nltk"]
+    },
+    "planner_agent": {
+      "description": "Decides execution strategy (Serial/Parallel/Async) and delegates tasks.",
+      "input_schema": {
+        "intent_data": {"type": "object", "required": true}
+      },
+      "output_schema": {
+        "execution_plan": {"type": "object", "description": "DAG or step list for execution"}
+      },
+      "capabilities": ["planning", "delegation", "orchestration"],
+      "dependencies": ["intent_agent"],
+      "execution_time_estimate": "2-4s",
+      "cost_tier": "medium",
+      "agent_class": "PlannerAgent",
+      "model_config": {"agent_type": "reasoning"},
+      "required_packages": ["networkx"]
+    },
+    "retrieval_agent": {
+      "description": "Performs RAG operations: Chunking, Overlap, Multi-modal retrieval (PDF/Img/Docs).",
+      "input_schema": {
+        "search_query": {"type": "string", "required": true},
+        "filters": {"type": "object", "required": false}
+      },
+      "output_schema": {
+        "retrieved_context": {"type": "array", "description": "Top-k chunks with metadata"}
+      },
+      "capabilities": ["rag", "document_search", "image_retrieval"],
+      "dependencies": [],
+      "execution_time_estimate": "3-8s",
+      "cost_tier": "high",
+      "agent_class": "RetrievalAgent",
+      "model_config": {"agent_type": "rag"},
+      "required_packages": ["langchain", "chromadb", "pypdf", "python-docx", "unstructured", "pillow", "pytesseract"]
+    },
+    "memory_agent": {
+      "description": "Manages Working, Episodic, and Semantic memory with persistence.",
+      "input_schema": {
+        "operation": {"type": "string", "enum": ["read", "write"]},
+        "memory_type": {"type": "string", "enum": ["working", "episodic", "semantic"]},
+        "content": {"type": "object"}
+      },
+      "output_schema": {
+        "memory_result": {"type": "object"}
+      },
+      "capabilities": ["memory_persistence", "context_management"],
+      "dependencies": [],
+      "execution_time_estimate": "1-2s",
+      "cost_tier": "low",
+      "agent_class": "MemoryAgent",
+      "model_config": {"agent_type": "memory"},
+      "required_packages": ["langgraph-checkpoint-sqlite", "redis"]
+    },
+    "reasoning_agent": {
+      "description": "Correlates current issues with history and identifies patterns/root causes.",
+      "input_schema": {
+        "context": {"type": "object", "required": true},
+        "history": {"type": "array", "required": true}
+      },
+      "output_schema": {
+        "reasoning_trace": {"type": "object", "description": "Chain of thought analysis"}
+      },
+      "capabilities": ["correlation", "root_cause_analysis", "pattern_matching"],
+      "dependencies": ["retrieval_agent", "memory_agent"],
+      "execution_time_estimate": "5-10s",
+      "cost_tier": "high",
+      "agent_class": "ReasoningAgent",
+      "model_config": {"agent_type": "reasoning"},
+      "required_packages": []
+    },
+    "response_synthesis_agent": {
+      "description": "Generates human-readable outputs from reasoning traces.",
+      "input_schema": {
+        "reasoning_output": {"type": "object", "required": true}
+      },
+      "output_schema": {
+        "final_response": {"type": "string"}
+      },
+      "capabilities": ["response_generation", "natural_language_synthesis"],
+      "dependencies": ["reasoning_agent"],
+      "execution_time_estimate": "3-5s",
+      "cost_tier": "medium",
+      "agent_class": "ResponseSynthesisAgent",
+      "model_config": {"agent_type": "generator"},
+      "required_packages": ["langchain-openai"]
+    },
+    "guardrails_agent": {
+      "description": "Ensures safety, prevents hallucinations and harmful content (Jailbreak, Hate, etc.).",
+      "input_schema": {
+        "proposed_content": {"type": "string", "required": true}
+      },
+      "output_schema": {
+        "safe_content": {"type": "string"},
+        "violation_flag": {"type": "boolean"}
+      },
+      "capabilities": ["safety_enforcement", "hallucination_check", "content_filtering"],
+      "dependencies": ["response_synthesis_agent"],
+      "execution_time_estimate": "1-3s",
+      "cost_tier": "low",
+      "agent_class": "GuardrailsAgent",
+      "model_config": {"agent_type": "guardrail"},
+      "required_packages": ["guardrails-ai", "nemoguardrails"]
+    }
+  },
+  "workflow_templates": {
+    "customer_support_ticket": {
+      "description": "Orchestrated resolution for user support tickets. Uses Planner to decide Serial vs Parallel execution based on urgency.",
+      "typical_agents": [
+        "ingestion_agent",
+        "intent_agent",
+        "planner_agent",
+        "retrieval_agent",
+        "memory_agent",
+        "reasoning_agent",
+        "response_synthesis_agent",
+        "guardrails_agent"
+      ],
+      "optional_agents": [],
+      "keywords": ["support", "ticket", "help", "issue", "error"]
+    },
+    "incident_response": {
+      "description": "Rapid response workflow for critical system alerts. Prioritizes speed and deep investigation.",
+      "typical_agents": [
+        "ingestion_agent",
+        "intent_agent",
+        "planner_agent",
+        "retrieval_agent",
+        "memory_agent",
+        "reasoning_agent"
+      ],
+      "optional_agents": ["response_synthesis_agent"],
+      "keywords": ["incident", "alert", "outage", "critical"]
+    },
+    "rapid_inquiry": {
+      "description": "Fast-track workflow for simple FAQ or status checks. Planner typically routes this serially.",
+      "typical_agents": [
+        "ingestion_agent",
+        "intent_agent",
+        "response_synthesis_agent",
+        "guardrails_agent"
+      ],
+      "optional_agents": ["memory_agent"],
+      "keywords": ["faq", "status", "quick", "question"]
+    }
+  }
+}

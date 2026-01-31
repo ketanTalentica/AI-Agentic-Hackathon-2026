@@ -1,0 +1,23 @@
+{
+    "chunking": {
+        "strategy": "recursive_character",
+        "chunk_size": 512,
+        "chunk_overlap": 50
+    },
+    "vector_store": {
+        "provider": "chromadb",
+        "collection_name": "support_docs_v1",
+        "distance_metric": "cosine"
+    },
+    "search": {
+        "default_top_k": 5,
+        "min_relevance_score": 0.65,
+        "max_results_limit": 20
+    },
+    "source_weights": {
+        "official_documentation": 1.2,
+        "runbooks": 1.5,
+        "slack_history": 0.8,
+        "emails": 0.6
+    }
+}

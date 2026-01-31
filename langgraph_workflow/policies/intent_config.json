@@ -1,0 +1,31 @@
+{
+    "categories": [
+        "technical_issue",
+        "billing_inquiry",
+        "feature_request",
+        "account_access",
+        "outage_report",
+        "status_check",
+        "faq"
+    ],
+    "category_definitions": {
+        "technical_issue": "User is experiencing errors, bugs, or unexpected behavior with the software that requires troubleshooting.",
+        "billing_inquiry": "Questions regarding invoices, payments, pricing tiers, or credit card updates. NOT for pricing of new features.",
+        "outage_report": "User reports that the entire system or a major component is completely unavailable/down. High urgency.",
+        "account_access": "Issues related to logging in, 2FA, password resets, or user permissions.",
+        "feature_request": "User is asking for functionality that does not currently exist. Not an error."
+    },
+    "sla_thresholds_hours": {
+        "outage_report": 1,
+        "technical_issue": 4,
+        "active_blocker": 2,
+        "billing_inquiry": 24,
+        "feature_request": 72,
+        "default": 8
+    },
+    "heuristic_keywords": {
+        "outage_report": ["down", "crash", "500 error", "not working", "offline"],
+        "billing_inquiry": ["invoice", "charge", "credit card", "payment", "refund"],
+        "account_access": ["login", "password", "2fa", "locked out"]
+    }
+}

@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "./langgraph_workflow/models"
+    ]
+}

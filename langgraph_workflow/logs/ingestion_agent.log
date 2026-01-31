@@ -1,0 +1,2 @@
+[2026-01-31T13:39:44.486761] Received raw payload: {"user_input": "Have we seen this error code before?"}
+[2026-01-31T13:39:44.488482] Normalized success: {"raw_input":"Have we seen this error code before?","cleaned_text":"Have we seen this error code before?","ingestion_timestamp":"2026-01-31T08:09:44.488369Z","request_id":"d4ab1662-c826-4903-88a9-2aeba435eae5","metadata":{},"is_valid":true,"error_message":null}

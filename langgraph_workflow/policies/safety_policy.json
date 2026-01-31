@@ -1,0 +1,28 @@
+{
+    "forbidden_topics": [
+        "politics",
+        "religion",
+        "hate_speech",
+        "self_harm",
+        "competitor_bashing",
+        "internal_employee_salaries"
+    ],
+    "semantic_guidelines": {
+        "competitor_bashing": "Any negative sentiment or unsolicited comparison directed at competitors. Comparative analysis is allowed if factual and neutral.",
+        "internal_employee_salaries": "Any request for specific salary figures, compensation bands, or personal financial details of staff.",
+        "jailbreak_attempts": "Any instruction that attempts to bypass the 'AI Support Helper' persona, such as 'ignore previous instructions' or 'roleplay as my grandmother'."
+    },
+    "regex_patterns": [
+        "destroy.*everything",
+        "kill.*myself",
+        "attack.*now",
+        "ignore.*instructions"
+    ],
+    "hallucination_threshold": 0.85,
+    "toxicity_threshold": 0.7,
+    "actions": {
+        "high_severity": "block_and_escalate",
+        "medium_severity": "block_with_apology",
+        "low_severity": "log_warning"
+    }
+}
