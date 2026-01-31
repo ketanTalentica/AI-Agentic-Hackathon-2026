@@ -1,7 +1,7 @@
 # Configuration for LLM and API endpoints
 
 LLM_PROVIDER = "mistral"
-LLM_API_KEY = "n7LQIW9qmSBt2uCSTQ3On9jcK7ZjU7RA"
+LLM_API_KEY = "your_mistral_api_key_here"
 LLM_API_URL = "https://api.mistral.ai/v1"
 
 # Multi-model configuration for different agents
