@@ -4,6 +4,8 @@ import json
 import os
 import logging
 import re
+import ast
+from utils.CommonLogger import CommonLogger
 
 class IntentAgent(BaseAgent):
     """
@@ -54,12 +56,19 @@ class IntentAgent(BaseAgent):
         # self.safety_rules - Loaded from safety_policy.json
 
         # Get user query from state store (written by Ingestion Agent)
-        normalized_data = await self.state_store.get("normalized_input")
-        if not normalized_data:
-            self.logger.error("No normalized input found in state store")
-            return {"status": "error", "message": "Missing normalized input"}
+        raw_state = self.state_store.get_all()
+        CommonLogger.WriteLog("logs/intent_agent_debug.log", f"Raw state from state store in intent_agent: {json.dumps(raw_state, indent=2)}")
+        ingestion_output = raw_state.get("ingestion_agent_output")
+        if not ingestion_output:
+            self.logger.error("No ingestion_agent_output found in state store")
+            return {"status": "error", "message": "Missing ingestion agent output"}
         
-        user_query = normalized_data.get("content", "")
+        normalized_data = ingestion_output.get("normalized_payload")
+        if not normalized_data:
+            self.logger.error("No normalized_payload found in ingestion_agent_output")
+            return {"status": "error", "message": "Missing normalized payload"}
+        
+        user_query = normalized_data.get("cleaned_text", "")
         self.logger.info(f"Processing query: {user_query[:100]}...")
 
         # STEP 2: FAST LAYER GUARDRAIL (REGEX)
@@ -178,11 +187,30 @@ Return ONLY valid JSON, no additional text."""
                 temperature=0.3  # Lower temperature for consistent classification
             )
             
-            # Parse JSON response
-            llm_response_clean = llm_response.replace("```json", "").replace("```", "").strip()
-            llm_result = json.loads(llm_response_clean)
+            # Parse JSON response - handle escaped newlines in LLM response
+            try:
+                # Try to evaluate as Python string literal first (handles escaped \n)
+                actual_response = ast.literal_eval(llm_response)
+            except (ValueError, SyntaxError):
+                actual_response = llm_response
             
-            self.logger.info(f"LLM classification: {llm_result.get('primary_intent')}, urgency: {llm_result.get('urgency')}")
+            # Remove markdown code fences
+            actual_response = actual_response.replace("```json", "").replace("```", "").strip()
+            
+            # Extract JSON object
+            json_match = re.search(r'\{.*\}', actual_response, re.DOTALL)
+            if json_match:
+                json_str = json_match.group()
+                # Escape all newlines for valid JSON, then selectively unescape structural ones
+                json_str = json_str.replace('\n', '\\n').replace('\r', '\\r')
+                # Unescape newlines that are part of JSON structure (after commas, braces)
+                json_str = json_str.replace(',\\n', ',\n').replace('{\\n', '{\n').replace('\\n}', '\n}')
+                llm_result = json.loads(json_str)
+            else:
+                raise json.JSONDecodeError("No JSON object found in response", actual_response, 0)
+            
+            CommonLogger.WriteLog("logs/intent_agent_llm_classification.log", f"LLM classification: {llm_result.get('primary_intent')}, urgency: {llm_result.get('urgency')}")
+        
             
             # Validate LLM output
             if not llm_result.get("is_safe", True):
@@ -196,6 +224,7 @@ Return ONLY valid JSON, no additional text."""
         except json.JSONDecodeError as e:
             self.logger.error(f"Failed to parse LLM JSON response: {e}")
             self.logger.error(f"Raw LLM response: {llm_response[:200]}")
+            CommonLogger.WriteLog("logs/intent_agent_llm_response.log", f"LLM response in intent_agent: {json.dumps(llm_response, indent=2)}")
             # Fallback to keyword hints
             primary_intent = keyword_context['suggested_categories'][0] if keyword_context['suggested_categories'] else "technical_issue"
             urgency = keyword_context['urgency_boost']
