@@ -50,32 +50,26 @@ class PlannerAgent(BaseAgent):
     async def _execute_impl(self) -> Dict[str, Any]:
         """
         Implementation of planning logic (Serial vs Parallel).
+        Planner now works independently of Intent Agent - follows diagram flow.
         """
         self.logger.info("Planner Agent executing...")
 
-        # 1. READ INPUT: Get Intent Data from State
-        # Strict Ownership: Planner reads 'intent_classification' written by IntentAgent
-        intent_raw = await self.state_store.get("intent_classification")
+        # 1. READ INPUT: Get Ingestion Data from State
+        # Planner analyzes the ingested data and creates execution strategy
+        ingestion_data = await self.state_store.get("ingestion_output")
         
-        if not intent_raw:
-            self.logger.warning("No intent classification found. Defaulting to basic serial flow.")
+        if not ingestion_data:
+            self.logger.warning("No ingestion data found. Defaulting to basic serial flow.")
             return self._create_fallback_plan()
 
-        try:
-            # Validate Input against Contract (Rule A)
-            intent = IntentClassification(**intent_raw)
-        except ValidationError as e:
-            self.logger.error(f"Invalid Intent Data Contract: {e}")
-            return self._create_fallback_plan()
-
-        # 2. HEURISTIC ENGINE: Decide Strategy
-        # Logic: Determine WHICH template and WHICH execution mode (Serial/Parallel)
-        template_key, strategy = self._decide_strategy(intent)
+        # 2. ANALYZE REQUEST: Determine workflow type from ingestion data
+        # Use simple heuristics on the raw request to decide strategy
+        template_key, strategy = self._decide_strategy_from_ingestion(ingestion_data)
         
         self.logger.info(f"Selected Template: {template_key}, Strategy: {strategy.value}")
 
         # 3. BUILD DAG: Construct the specific steps
-        execution_plan = self._build_execution_graph(template_key, strategy, intent)
+        execution_plan = self._build_execution_graph(template_key, strategy, ingestion_data)
 
         # 4. OUTPUT: Return the Plan object
         return {
@@ -83,10 +77,49 @@ class PlannerAgent(BaseAgent):
             "status": "plan_ready"
         }
 
-    def _decide_strategy(self, intent: IntentClassification) -> tuple[str, ExecutionStrategy]:
+    def _decide_strategy_from_ingestion(self, ingestion_data: Dict[str, Any]) -> tuple[str, ExecutionStrategy]:
         """
         The 'Brain' of the Planner.
-        Decides mechanism based on external rules (policies/planner_rules.json).
+        Decides workflow strategy based on ingestion data (before Intent classification).
+        Uses keyword heuristics to determine the best template and execution mode.
+        """
+        # Extract raw text from ingestion
+        raw_text = ingestion_data.get("processed_text", "").lower()
+        metadata = ingestion_data.get("metadata", {})
+        
+        # Simple keyword-based heuristics
+        # For production, this could use lightweight NLP or rule matching
+        
+        # Check for urgent/critical keywords
+        urgent_keywords = ["urgent", "critical", "emergency", "down", "outage", "broken", "failed"]
+        is_urgent = any(keyword in raw_text for keyword in urgent_keywords)
+        
+        # Check for investigation keywords (requires parallel research)
+        investigation_keywords = ["why", "analyze", "investigate", "root cause", "pattern", "trend"]
+        needs_investigation = any(keyword in raw_text for keyword in investigation_keywords)
+        
+        # Check for simple query keywords
+        query_keywords = ["how to", "what is", "can you", "please", "help"]
+        is_simple_query = any(keyword in raw_text for keyword in query_keywords)
+        
+        # Decision logic
+        if is_urgent:
+            # Critical issues: Use parallel strategy for faster response
+            return "incident_response", ExecutionStrategy.PARALLEL
+        elif needs_investigation:
+            # Complex investigation: Use parallel for comprehensive analysis
+            return "root_cause_analysis", ExecutionStrategy.PARALLEL
+        elif is_simple_query:
+            # Simple questions: Serial flow is sufficient
+            return "customer_support_ticket", ExecutionStrategy.SERIAL
+        else:
+            # Default: Customer support with serial execution
+            return "customer_support_ticket", ExecutionStrategy.SERIAL
+    
+    def _decide_strategy(self, intent: IntentClassification) -> tuple[str, ExecutionStrategy]:
+        """
+        Legacy method: Decides mechanism based on intent classification.
+        Kept for backward compatibility if needed.
         """
         intent_dict = intent.model_dump()
         rules = self.rules.get("strategy_rules", [])
@@ -121,7 +154,7 @@ class PlannerAgent(BaseAgent):
         default = self.rules.get("default_strategy", {})
         return default.get("template", "customer_support_ticket"), ExecutionStrategy(default.get("strategy", "serial"))
 
-    def _build_execution_graph(self, template_key: str, strategy: ExecutionStrategy, intent: IntentClassification) -> ExecutionPlan:
+    def _build_execution_graph(self, template_key: str, strategy: ExecutionStrategy, ingestion_data: Dict[str, Any]) -> ExecutionPlan:
         """
         Constructs the list of WorkflowSteps based on the registry template and selected strategy.
         """
@@ -130,10 +163,11 @@ class PlannerAgent(BaseAgent):
         
         steps = []
         
-        # Filter out agents that have already run (Ingestion, Intent, Planner)
+        # Filter out agents that have already run (Ingestion, Planner)
+        # Intent will run AFTER Planner per the diagram
         remaining_agents = [
             a for a in agent_list 
-            if a not in ["ingestion_agent", "intent_agent", "planner_agent"]
+            if a not in ["ingestion_agent", "planner_agent"]
         ]
 
         if strategy == ExecutionStrategy.SERIAL:
@@ -197,7 +231,7 @@ class PlannerAgent(BaseAgent):
              return self._build_execution_graph(template_key, ExecutionStrategy.SERIAL, intent)
 
         return ExecutionPlan(
-            plan_id=f"plan_{intent.primary_intent}_{strategy.value}",
+            plan_id=f"plan_{template_key}_{strategy.value}",
             strategy=strategy.value,
             steps=steps
         )

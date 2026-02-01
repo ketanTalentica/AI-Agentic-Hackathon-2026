@@ -94,7 +94,7 @@
         "reasoning_trace": {"type": "object", "description": "Chain of thought analysis"}
       },
       "capabilities": ["correlation", "root_cause_analysis", "pattern_matching"],
-      "dependencies": ["retrieval_agent", "memory_agent"],
+      "dependencies": ["intent_agent", "retrieval_agent", "memory_agent"],
       "execution_time_estimate": "5-10s",
       "cost_tier": "high",
       "agent_class": "ReasoningAgent",

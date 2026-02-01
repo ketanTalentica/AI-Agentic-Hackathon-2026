@@ -184,7 +184,7 @@ RULES:
         
         try:
             data = json.loads(cleaned)
-            return WorkflowPlan(
+            plan = WorkflowPlan(
                 selected_agents=data.get("selected_agents", []),
                 execution_order=data.get("execution_order", []), 
                 dependencies=data.get("dependencies", {}),
@@ -192,23 +192,107 @@ RULES:
                 estimated_time=data.get("estimated_time", "Unknown"),
                 estimated_cost=data.get("estimated_cost", "Unknown")
             )
+            
+            # Enforce mandatory dependencies from agent_registry.json
+            plan = self._enforce_agent_dependencies(plan)
+            
+            return plan
         except json.JSONDecodeError as e:
             if self.debug:
                 print(f"[SmartOrchestrator] JSON parse error: {e}")
                 print(f"Response was: {cleaned}")
             return self._create_default_workflow()
+    
+    def _enforce_agent_dependencies(self, plan: WorkflowPlan) -> WorkflowPlan:
+        """Ensure all required dependencies from agent_registry.json are included"""
+        
+        agents_to_add = set()
+        updated_dependencies = dict(plan.dependencies)
+        
+        # For each selected agent, check if its dependencies are included
+        for agent_id in plan.selected_agents:
+            agent_info = self.registry.get_agent_info(agent_id)
+            required_deps = agent_info.get("dependencies", [])
+            
+            for dep in required_deps:
+                if dep not in plan.selected_agents:
+                    # Required dependency is missing - add it
+                    agents_to_add.add(dep)
+                    if self.debug:
+                        print(f"[SmartOrchestrator] Adding missing dependency: {dep} (required by {agent_id})")
+                
+                # Ensure dependency is tracked
+                if agent_id not in updated_dependencies:
+                    updated_dependencies[agent_id] = []
+                if dep not in updated_dependencies[agent_id]:
+                    updated_dependencies[agent_id].append(dep)
+        
+        # Add missing agents to the plan
+        if agents_to_add:
+            updated_agents = list(plan.selected_agents) + list(agents_to_add)
+            
+            # Rebuild execution order with topological sort
+            updated_order = self._topological_sort(updated_agents, updated_dependencies)
+            
+            return WorkflowPlan(
+                selected_agents=updated_agents,
+                execution_order=updated_order,
+                dependencies=updated_dependencies,
+                reasoning=plan.reasoning + f" (Auto-added dependencies: {', '.join(agents_to_add)})",
+                estimated_time=plan.estimated_time,
+                estimated_cost=plan.estimated_cost
+            )
+        
+        return plan
+    
+    def _topological_sort(self, agents: List[str], dependencies: Dict[str, List[str]]) -> List[str]:
+        """Sort agents based on dependencies using topological sort"""
+        
+        # Build in-degree map
+        in_degree = {agent: 0 for agent in agents}
+        for agent, deps in dependencies.items():
+            if agent in in_degree:
+                in_degree[agent] = len(deps)
+        
+        # Find agents with no dependencies
+        queue = [agent for agent in agents if in_degree[agent] == 0]
+        result = []
+        
+        while queue:
+            # Sort queue for deterministic ordering
+            queue.sort()
+            current = queue.pop(0)
+            result.append(current)
+            
+            # Reduce in-degree for dependent agents
+            for agent, deps in dependencies.items():
+                if current in deps and agent not in result:
+                    in_degree[agent] -= 1
+                    if in_degree[agent] == 0 and agent not in queue:
+                        queue.append(agent)
+        
+        # Add any remaining agents (shouldn't happen with valid dependencies)
+        for agent in agents:
+            if agent not in result:
+                result.append(agent)
+        
+        return result
             
     def _create_default_workflow(self) -> WorkflowPlan:
-        """Create default workflow as fallback"""
+        """Create default workflow as fallback - follows diagram architecture"""
         return WorkflowPlan(
-            selected_agents=["interpreter_agent", "content_generator", "plan_presenter"],
-            execution_order=["interpreter_agent", "content_generator", "plan_presenter"],
+            selected_agents=["ingestion_agent", "planner_agent", "intent_agent", "retrieval_agent", "reasoning_agent", "response_synthesis_agent", "guardrails_agent"],
+            execution_order=["ingestion_agent", "planner_agent", "intent_agent", "retrieval_agent", "reasoning_agent", "response_synthesis_agent", "guardrails_agent"],
             dependencies={
-                "content_generator": ["interpreter_agent"],
-                "plan_presenter": ["content_generator"]
+                "planner_agent": ["ingestion_agent"],
+                "intent_agent": ["planner_agent"],
+                "retrieval_agent": ["planner_agent", "intent_agent"],
+                "reasoning_agent": ["retrieval_agent"],
+                "response_synthesis_agent": ["reasoning_agent"],
+                "guardrails_agent": ["response_synthesis_agent"]
             },
-            reasoning="Default email campaign workflow",
-            estimated_time="15-25 seconds",
+            reasoning="Customer support workflow following diagram architecture (Planner→Intent)",
+            estimated_time="20-35 seconds",
             estimated_cost="medium"
         )
         
@@ -342,8 +426,12 @@ RULES:
     async def _create_agent_instance(self, agent_id: str):
         """Dynamically create agent instance"""
         
+        self._log_event("agent_creation", {"agent_id": agent_id})
+        
         agent_info = self.registry.get_agent_info(agent_id)
+        self._log_event("agent_info", {"agent_id": agent_id, "agent_info": agent_info})
         agent_class_name = agent_info.get("agent_class")
+        self._log_event("agent_class_name", {"agent_id": agent_id, "agent_class_name": agent_class_name})
         
         # Import the appropriate agent class
         try:
