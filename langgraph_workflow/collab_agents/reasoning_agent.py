@@ -2,6 +2,9 @@ from langgraph_agents.langgraph_system import BaseAgent
 from typing import Dict, Any, List
 import json
 import logging
+import ast
+import re
+from utils.CommonLogger import CommonLogger
 
 class ReasoningAgent(BaseAgent):
     """
@@ -38,10 +41,13 @@ class ReasoningAgent(BaseAgent):
         self.logger.info("Reasoning Agent executing...")
         
         # STEP 1: GATHER CONTEXT
-        # Get data from previous agents
+        # Get data from previous agents (Intent Agent writes to state_store)
         intent_data = await self.state_store.get("intent_classification")
         retrieval_data = await self.state_store.get("retrieval_results")
-        normalized_data = await self.state_store.get("normalized_input")
+        
+        # Get normalized input from ingestion agent output
+        ingestion_output = await self.state_store.get("ingestion_agent_output")
+        normalized_data = ingestion_output.get("normalized_payload") if ingestion_output else None
         
         if not intent_data:
             self.logger.error("No intent classification found")
@@ -89,14 +95,25 @@ class ReasoningAgent(BaseAgent):
         )
         
         # STEP 6: OUTPUT TO STATE STORE
-        from models.model_reasoning_agent import ReasoningTrace, RootCause
+        from models.model_reasoning_agent import ReasoningTrace, RootCause, RecommendedSolution
         
         # Build reasoning trace
+        # Handle recommended_solution - ensure it's a proper RecommendedSolution object
+        rec_solution = correlation_result.get("recommended_solution", {})
+        if isinstance(rec_solution, dict):
+            recommended_solution = RecommendedSolution(**rec_solution)
+        else:
+            # If it's a string (from fallback), convert to structure
+            recommended_solution = RecommendedSolution(
+                immediate_actions=[{"step": "1", "details": str(rec_solution)}],
+                long_term=[]
+            )
+        
         reasoning_trace = ReasoningTrace(
             analysis_steps=correlation_result.get("analysis_steps", []),
             identified_patterns=pattern_analysis.get("patterns", []),
             root_causes=correlation_result.get("root_causes", []),
-            recommended_solution=correlation_result.get("recommended_solution", ""),
+            recommended_solution=recommended_solution,
             confidence_score=correlation_result.get("confidence_score", 0.5)
         )
         
@@ -208,12 +225,19 @@ OUTPUT FORMAT (JSON):
             "evidence": ["supporting evidence 1", "evidence 2"]
         }}
     ],
-    "recommended_solution": "detailed solution approach",
+    "recommended_solution": {{
+        "immediate_actions": [
+            {{"step": "1. Action description", "details": "Detailed steps..."}}
+        ],
+        "long_term": [
+            {{"step": "1. Long-term improvement", "details": "Details..."}}
+        ]
+    }},
     "confidence_score": 0.0-1.0,
     "reasoning": "explanation of analysis"
 }}
 
-Return ONLY valid JSON, no additional text."""
+Return ONLY valid JSON, no additional text. Response should be within 200 words."""
 
         self.logger.info("Calling LLM for correlation analysis...")
         
@@ -221,16 +245,47 @@ Return ONLY valid JSON, no additional text."""
             # Call LLM with comprehensive context
             llm_response = self.llm.generate(
                 llm_prompt,
-                max_tokens=1000,
-                temperature=0.4  # Moderate creativity for analysis
+                max_tokens=2000,
+                temperature=0.3  # Moderate creativity for analysis
             )
             
-            # Parse JSON response
-            llm_response_clean = llm_response.replace("```json", "").replace("```", "").strip()
-            correlation_result = json.loads(llm_response_clean)
+            CommonLogger.WriteLog("logs/reasoning_agent.log", f"{llm_response}")
             
-            self.logger.info(f"LLM correlation analysis complete: {len(correlation_result.get('root_causes', []))} root causes identified")
+            # Parse JSON response - handle escaped newlines in LLM response
+            try:
+                # Try to evaluate as Python string literal first (handles escaped \n)
+                actual_response = ast.literal_eval(llm_response)
+            except (ValueError, SyntaxError):
+                actual_response = llm_response
             
+            # Remove markdown code fences
+            actual_response = actual_response.replace("```json", "").replace("```", "").strip()
+            
+            # Extract JSON object
+            json_match = re.search(r'\{.*\}', actual_response, re.DOTALL)
+            if json_match:
+                json_str = json_match.group()
+                
+                # First, escape ALL newlines and carriage returns
+                json_str = json_str.replace('\n', '\\n').replace('\r', '\\r')
+                
+                # Then, selectively unescape ONLY structural newlines (JSON formatting)
+                # After opening braces/brackets and before closing ones
+                json_str = json_str.replace('{\\n', '{\n').replace('[\\n', '[\n')
+                json_str = json_str.replace('\\n}', '\n}').replace('\\n]', '\n]')
+                # After commas at the end of key-value pairs
+                json_str = json_str.replace(',\\n', ',\n')
+                # After colons when starting arrays/objects
+                json_str = json_str.replace(': [\\n', ': [\n').replace(': {\\n', ': {\n')
+                # Replace literal \n with empty string (remove them entirely)
+                json_str = json_str.replace('\\n', '')
+                # Log the cleaned JSON for debugging
+                CommonLogger.WriteLog("logs/reasoning_agent_cleaned_json.log", f"Cleaned JSON string:\n{json_str}")
+                
+                correlation_result = json.loads(json_str)
+            else:
+                raise json.JSONDecodeError("No JSON object found in response", actual_response, 0)
+            CommonLogger.WriteLog("logs/reasoning_agent_correlation_result.log", f"{correlation_result}")
             return correlation_result
             
         except json.JSONDecodeError as e:
@@ -240,11 +295,14 @@ Return ONLY valid JSON, no additional text."""
                 "analysis_steps": ["Unable to perform detailed analysis"],
                 "identified_patterns": [],
                 "root_causes": [{
-                    "cause": "Analysis failed - insufficient data",
+                    "cause": f"{e}",
                     "probability": 0.3,
                     "evidence": []
                 }],
-                "recommended_solution": "Manual investigation required",
+                "recommended_solution": {
+                    "immediate_actions": [{"step": "1. Manual Investigation", "details": "Manual investigation required due to parsing error."}],
+                    "long_term": []
+                },
                 "confidence_score": 0.3,
                 "reasoning": f"LLM parsing failed: {str(e)}"
             }
@@ -259,7 +317,10 @@ Return ONLY valid JSON, no additional text."""
                     "probability": 0.0,
                     "evidence": []
                 }],
-                "recommended_solution": "Escalate for manual review",
+                "recommended_solution": {
+                    "immediate_actions": [{"step": "1. Escalate", "details": "Escalate for manual review due to analysis error."}],
+                    "long_term": []
+                },
                 "confidence_score": 0.1,
                 "reasoning": f"Error: {str(e)}"
             }
@@ -310,7 +371,7 @@ Return ONLY valid JSON, no additional text."""
                 "query": user_query,
                 "intent": intent,
                 "root_causes": correlation_result.get("root_causes", []),
-                "solution": correlation_result.get("recommended_solution", "")
+                "solution": correlation_result.get("recommended_solution", {})
             }
             
             episodic_input = MemoryInput(

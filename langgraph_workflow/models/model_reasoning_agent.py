@@ -12,11 +12,19 @@ class RootCause(BaseModel):
     probability: float
     evidence: List[str] = Field(description="Quotes or references from context supporting this cause.")
 
+class ActionStep(BaseModel):
+    step: str
+    details: str
+
+class RecommendedSolution(BaseModel):
+    immediate_actions: List[ActionStep] = Field(default_factory=list)
+    long_term: List[ActionStep] = Field(default_factory=list)
+
 class ReasoningTrace(BaseModel):
     analysis_steps: List[str] = Field(description="Step-by-step chain of thought.")
     identified_patterns: List[str] = Field(default_factory=list, description="Correlations with historical data.")
     root_causes: List[RootCause]
-    recommended_solution: str
+    recommended_solution: RecommendedSolution
     confidence_score: float
 
 class ReasoningOutput(BaseModel):
